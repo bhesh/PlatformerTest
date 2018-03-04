@@ -1,0 +1,5 @@
+Debug/
+x64/
+PlatformerTest/*.dll
+PlatformerTest/Debug/
+PlatformerTest/x64/
