@@ -23,6 +23,7 @@
     <ClCompile Include="src\graphics\AnimatedSprite.cpp" />
     <ClCompile Include="src\graphics\Animation.cpp" />
     <ClCompile Include="src\graphics\CharacterSprite.cpp" />
+    <ClCompile Include="src\objects\Platform.cpp" />
     <ClCompile Include="src\stdafx.cpp" />
     <ClCompile Include="src\world\PltWindow.cpp" />
     <ClCompile Include="src\world\World.cpp" />
@@ -31,6 +32,8 @@
     <ClInclude Include="include\plt\graphics\AnimatedSprite.h" />
     <ClInclude Include="include\plt\graphics\Animation.h" />
     <ClInclude Include="include\plt\graphics\CharacterSprite.h" />
+    <ClInclude Include="include\plt\objects\Character.h" />
+    <ClInclude Include="include\plt\objects\Platform.h" />
     <ClInclude Include="include\plt\world\PltWindow.h" />
     <ClInclude Include="include\plt\world\World.h" />
     <ClInclude Include="include\stdafx.h" />

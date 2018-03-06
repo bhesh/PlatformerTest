@@ -29,8 +29,8 @@
 float DEBUG = false;
 
 // Screen res
-unsigned int WINDOW_WIDTH = 800;
-unsigned int WINDOW_HEIGHT = 600;
+unsigned int WINDOW_WIDTH = 32 * 24;
+unsigned int WINDOW_HEIGHT = 32 * 18;
 
 // Scale
 float SCALE = 2.f;
@@ -69,6 +69,12 @@ int main(int argc, char *argv[]) {
 	metalSprite.setOrigin(16.f, 8.f);
 	metalSprite.setScale(SCALE, SCALE);
 
+	// Make character sprite
+	sf::RectangleShape characterSprite = sf::RectangleShape( sf::Vector2f(32.f, 64.f));
+	characterSprite.setFillColor(sf::Color::White);
+	characterSprite.setOrigin(16.f, 32.f);
+	characterSprite.setScale(SCALE, SCALE);
+
 	// Make the window
 	plt::world::PltWindow window(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), 
 		"Platformer Test", sf::Style::Close);
@@ -78,33 +84,36 @@ int main(int argc, char *argv[]) {
 	window.showFps(DEBUG);
 
 	// Make the world
-	plt::world::World world(sf::Vector2f(0, 9.8f));
+	plt::world::World world(sf::Vector2f(0, 50.f));
 
 	// Keep track of platforms and spawns
 	std::vector<b2Body *> platforms;
 	std::vector<b2Body *> spawns;
 
 	// Create platforms
-	for (int i = 0; i < static_cast<int>(WINDOW_WIDTH + (31.f * SCALE));
-		i += static_cast<int>(32.f * SCALE)) {
-		b2Body *platform = world.CreateRect(sf::FloatRect(
-			static_cast<float>(i),
-			static_cast<float>(WINDOW_HEIGHT - (16.f * SCALE)),
-			32.f * SCALE,
-			16.f * SCALE
-		));
-		platforms.push_back(platform);
-	}
-	for (int i = WINDOW_WIDTH / 2; i < static_cast<int>(WINDOW_WIDTH + (31.f * SCALE));
-		i += static_cast<int>(32.f * SCALE)) {
-		b2Body *platform = world.CreateRect(sf::FloatRect(
-			static_cast<float>(i),
-			static_cast<float>(WINDOW_HEIGHT / 2),
-			32.f * SCALE,
-			16.f * SCALE
-		));
-		platforms.push_back(platform);
-	}
+	b2Body *floor = world.CreateRect(sf::FloatRect(
+		0,
+		static_cast<float>(WINDOW_HEIGHT - (16.f * SCALE)),
+		static_cast<float>(WINDOW_WIDTH),
+		16.f * SCALE
+	));
+	platforms.push_back(floor);
+	b2Body *platform = world.CreateRect(sf::FloatRect(
+		static_cast<float>(WINDOW_WIDTH / 2),
+		static_cast<float>(WINDOW_HEIGHT / 2),
+		static_cast<float>(WINDOW_WIDTH / 2),
+		16.f * SCALE
+	));
+	platforms.push_back(platform);
+
+	// Create character
+	b2Body *character = world.CreateRect(sf::FloatRect(
+		10.f,
+		200.f,
+		32.f * SCALE,
+		64.f * SCALE
+	), b2_dynamicBody);
+	character->SetFixedRotation(true);
 
 	// Game loop
 	sf::Clock clock;
@@ -118,7 +127,7 @@ int main(int argc, char *argv[]) {
 		while (window.pollEvent(event)) {
 			if (event.type == sf::Event::Closed)
 				window.close();
-			else if (event.type == sf::Event::MouseButtonPressed &&
+			/*else if (event.type == sf::Event::MouseButtonPressed &&
 				event.mouseButton.button == sf::Mouse::Left) {
 				sf::Vector2i mousePos = sf::Mouse::getPosition(window);
 				sf::Vector2f pos = window.mapPixelToCoords(mousePos);
@@ -129,13 +138,15 @@ int main(int argc, char *argv[]) {
 					32 * SCALE
 				), b2_dynamicBody);
 				spawns.push_back(spawn);
-			}
+			}*/
 			else if (event.type == sf::Event::KeyPressed) {
 				switch (event.key.code) {
 				case sf::Keyboard::Space:
-					for (auto it = spawns.begin(); it != spawns.end(); ++it)
+					/*for (auto it = spawns.begin(); it != spawns.end(); ++it)
 						world.DestroyBody(*it);
-					spawns.clear();
+					spawns.clear();*/
+					character->ApplyLinearImpulse(b2Vec2(0, -150.f * SCALE),
+						character->GetWorldCenter(), true);
 					break;
 				case sf::Keyboard::Tilde:
 					DEBUG = !DEBUG;
@@ -145,6 +156,18 @@ int main(int argc, char *argv[]) {
 			}
 		}
 
+		// Get input
+		b2Vec2 vel = character->GetLinearVelocity();
+		if (sf::Keyboard::isKeyPressed(sf::Keyboard::Left)) {
+			character->SetLinearVelocity(b2Vec2(-6.f * SCALE, vel.y));
+		}
+		else if (sf::Keyboard::isKeyPressed(sf::Keyboard::Right)) {
+			character->SetLinearVelocity(b2Vec2(6.f * SCALE, vel.y));
+		}
+		else {
+			character->SetLinearVelocity(b2Vec2(0, vel.y));
+		}
+ 
 		// Clear the screen
 		window.clear();
 		window.resetView();
@@ -154,9 +177,16 @@ int main(int argc, char *argv[]) {
 
 		// Draw sprites
 		for (auto it = platforms.begin(); it != platforms.end(); ++it) {
-			b2Vec2 pos = (*it)->GetPosition();
-			metalSprite.setPosition(world.GetWindowPoint(pos));
-			window.draw(metalSprite);
+			b2AABB bounds;
+			(*it)->GetFixtureList()->GetShape()->ComputeAABB(&bounds, (*it)->GetTransform(), 0);
+			sf::Vector2f lowerBounds = world.GetWindowPoint(bounds.lowerBound);
+			sf::Vector2f upperBounds = world.GetWindowPoint(bounds.upperBound);
+			for (float x = bounds.lowerBound.x; x < bounds.upperBound.x; x += (32.f * SCALE) / world.GetPixelScale()) {
+				sf::Vector2f pos = world.GetWindowPoint(b2Vec2(x, bounds.lowerBound.y));
+				pos += sf::Vector2f(16.f * SCALE, 8.f * SCALE);
+				metalSprite.setPosition(pos);
+				window.draw(metalSprite);
+			}
 		}
 		for (auto it = spawns.begin(); it != spawns.end(); ++it) {
 			b2Transform xf = (*it)->GetTransform();
@@ -165,6 +195,12 @@ int main(int argc, char *argv[]) {
 			boxSprite.setRotation(180 / b2_pi * (*it)->GetAngle());
 			window.draw(boxSprite);
 		}
+
+		// Draw character
+		b2Transform xf = character->GetTransform();
+		b2Vec2 pos = b2Mul(xf, character->GetLocalCenter());
+		characterSprite.setPosition(world.GetWindowPoint(pos));
+		window.draw(characterSprite);
 
 		// Draw bounds
 		if (DEBUG)
